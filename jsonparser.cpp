@@ -7,10 +7,21 @@ JsonParser::JsonParser()
 
 void JsonParser::parse(std::string data)
 {
-	while(1)
+	Json::Reader reader;
+    Json::Value root;
+    if(!reader.parse(data, root))
 	{
-		SongInfo new_song;
-		new_song.setName(/* whatever */);
-		_song_info_vec.push_back(new_song);
+        std::cout << reader.getFormattedErrorMessages();
+        exit(1);
+    }
+    else
+	{
+		const Json::Value mynames = root["songs"];
+		for ( int index = 0; index < mynames.size(); ++index )
+		{
+			std::cout << std::endl << "Name: " << mynames[index]["name"] << std::endl;
+			std::cout << "File Name: " << mynames[index]["fileName"] << std::endl;
+			std::cout << "Tag: " << mynames[index]["tag"] << std::endl;
+		}
 	}
 }

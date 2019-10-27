@@ -115,7 +115,6 @@ void connect_https()
 	if (!s)
 	{
 		printf("Error creating socket.\n");
-		//return -1;
 	}
 	struct sockaddr_in sa;
 	memset (&sa, 0, sizeof(sa));
@@ -126,7 +125,6 @@ void connect_https()
 	if (connect(s, (struct sockaddr *)&sa, socklen))
 	{
 		printf("Error connecting to server.\n");
-		//return -1;
 	}
 	SSL_library_init();
 	SSLeay_add_ssl_algorithms();
@@ -138,11 +136,17 @@ void connect_https()
 	//creates a new SSL structure which is needed to hold the data for a TLS/SSL connection.
 	//return NULL if creation of a new SSL structure failed. Else return value points to an allocated SSL structure.
 	ssl = SSL_new (ctx);
+	//verify private key
+	if(!SSL_CTX_check_private_key(ctx))
+	{
+		printf("Invalid private key.\n");
+		log_ssl();
+		abort();
+	}
 	if (!ssl)
  	{
 		printf("Error creating SSL.\n");
 		log_ssl();
-		//return -1;
 	}
 	//returns the file descriptor which is linked to ssl.
 	//return -1 if operation failed. Else return file descriptor linked to ssl.
@@ -160,7 +164,6 @@ void connect_https()
 		printf("Error creating SSL connection.  err=%x\n", err);
 		log_ssl();
 		fflush(stdout);
-		//return -1;
 	}
 }
 
@@ -188,7 +191,7 @@ void parse_data(std::string data)
 int main(int argc, char *argv[])
 {
 	connect_https();
-//	ShowCerts(ssl);
+	ShowCerts(ssl);
 	char *request = "GET /song?tag=rain HTTP/1.1\r\n\r\n";
 	SendPacket(request);
 	std::string test = RecvPacket();
