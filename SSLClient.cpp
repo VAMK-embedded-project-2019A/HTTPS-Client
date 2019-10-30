@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <curl/curl.h>
 #include <cstdlib>
 #include <jsoncpp/json/json.h>
 
@@ -92,17 +93,17 @@ void ShowCerts(SSL* ssl)
 {
     X509 *cert;
     char *line;
-    cert = SSL_get_peer_certificate(ssl);  
+    cert = SSL_get_peer_certificate(ssl);
     if ( cert != NULL )
     {
         printf("Server certificates:\n");
         line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
         printf("Subject: %s\n", line);
-        free(line);        
+        free(line);
         line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
         printf("Issuer: %s\n", line);
-        free(line);    
-        X509_free(cert);  
+        free(line);
+        X509_free(cert);
     }
     else
         printf("Info: No client certificates configured.\n");
@@ -115,16 +116,18 @@ void connect_https()
 	if (!s)
 	{
 		printf("Error creating socket.\n");
+		//return -1;
 	}
 	struct sockaddr_in sa;
 	memset (&sa, 0, sizeof(sa));
 	sa.sin_family      = AF_INET;
-	sa.sin_addr.s_addr = inet_addr("62.248.142.4");
+	sa.sin_addr.s_addr = inet_addr("62.248.142.50");
 	sa.sin_port        = htons (2001);
 	socklen_t socklen = sizeof(sa);
 	if (connect(s, (struct sockaddr *)&sa, socklen))
 	{
 		printf("Error connecting to server.\n");
+		//return -1;
 	}
 	SSL_library_init();
 	SSLeay_add_ssl_algorithms();
@@ -136,8 +139,7 @@ void connect_https()
 	//creates a new SSL structure which is needed to hold the data for a TLS/SSL connection.
 	//return NULL if creation of a new SSL structure failed. Else return value points to an allocated SSL structure.
 	ssl = SSL_new (ctx);
-	//verify private key
-	if(!SSL_CTX_check_private_key(ctx))
+	/*if(!SSL_CTX_check_private_key(ctx))
 	{
 		printf("Invalid private key.\n");
 		log_ssl();
@@ -147,7 +149,8 @@ void connect_https()
  	{
 		printf("Error creating SSL.\n");
 		log_ssl();
-	}
+		//return -1;
+	}*/
 	//returns the file descriptor which is linked to ssl.
 	//return -1 if operation failed. Else return file descriptor linked to ssl.
 	sock = SSL_get_fd(ssl);
@@ -164,19 +167,20 @@ void connect_https()
 		printf("Error creating SSL connection.  err=%x\n", err);
 		log_ssl();
 		fflush(stdout);
+		//return -1;
 	}
 }
 
 void parse_data(std::string data)
 {
 	Json::Reader reader;
-    Json::Value root;
-    if(!reader.parse(data, root))
+	Json::Value root;
+	if(!reader.parse(data, root))
 	{
-        std::cout << reader.getFormattedErrorMessages();
-        exit(1);
-    }
-    else
+		std::cout << reader.getFormattedErrorMessages();
+		exit(1);
+	}
+	else
 	{
 		const Json::Value mynames = root["songs"];
 		for ( int index = 0; index < mynames.size(); ++index )
@@ -188,6 +192,74 @@ void parse_data(std::string data)
 	}
 }
 
+#undef DISABLE_SSH_AGENT
+struct FtpFile
+{
+	const char *filename;
+	FILE *stream;
+};
+
+static size_t my_fwrite(void *buffer, size_t size, size_t nmemb, void *stream)
+{
+	struct FtpFile *out = (struct FtpFile *)stream;
+	if(!out->stream) {
+    /* open file for writing */
+	out->stream = fopen(out->filename, "wb");
+	if(!out->stream)
+		return -1; /* failure, can't open file to write */
+	}
+	return fwrite(buffer, size, nmemb, out->stream);
+}
+
+void sftp_get()
+{
+	CURL *curl;
+	CURLcode res;
+	struct FtpFile ftpfile = 
+	{
+		"test_sftp.txt", /* name to store the file as if successful */
+		NULL
+	};
+	curl_global_init(CURL_GLOBAL_DEFAULT);
+	curl = curl_easy_init();
+	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+	if(curl)
+	{
+		curl_easy_setopt(curl, CURLOPT_URL,"sftp://espp@62.248.142.50/home/espp/songs/test.txt");
+		curl_easy_setopt(curl, CURLOPT_USERNAME, "espp"); 
+		/* Define our callback to get called when there's data to be written */
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_fwrite);
+		/* Set a pointer to our struct to pass to the callback */
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ftpfile);
+
+	#ifndef DISABLE_SSH_AGENT
+    	/* We activate ssh agent. For this to work you need
+       	to have ssh-agent running (type set | grep SSH_AGENT to check) or
+       	pageant on Windows (there is an icon in systray if so) */
+    	curl_easy_setopt(curl, CURLOPT_SSH_AUTH_TYPES, CURLSSH_AUTH_PUBLICKEY | CURLSSH_AUTH_PASSWORD);
+    	curl_easy_setopt(curl, CURLOPT_SSH_KNOWNHOSTS, "/home/pi/.ssh/known_hosts"); 
+		curl_easy_setopt(curl, CURLOPT_SSH_PUBLIC_KEYFILE, "home/pi/.ssh/id_rsa.pub");
+		curl_easy_setopt(curl, CURLOPT_SSH_PRIVATE_KEYFILE, "home/pi/.ssh/id_rsa"); 
+    	curl_easy_setopt(curl, CURLOPT_KEYPASSWD, "pass123");
+	#endif
+		/* Switch on full protocol/debug output */
+		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+		res = curl_easy_perform(curl);
+		/* always cleanup */
+		curl_easy_cleanup(curl);
+		if(CURLE_OK != res)
+		{
+			/* we failed */
+			fprintf(stderr, "curl told us %d\n", res);
+		}
+	}
+
+	if(ftpfile.stream)
+		fclose(ftpfile.stream); /* close the local file */
+	curl_global_cleanup();
+}
+
 int main(int argc, char *argv[])
 {
 	connect_https();
@@ -197,5 +269,6 @@ int main(int argc, char *argv[])
 	std::string test = RecvPacket();
 	std::string data = test.substr(213);
 	parse_data(data);
+	sftp_get();
 	return 0;
 }
