@@ -2,34 +2,21 @@
 #define HTTPSCLIENT_H
 
 #include <string>
-#include <stdio.h>
-#include <iostream>
-#include <string.h>
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <cstdlib>
-#include <jsoncpp/json/json.h>
-
-using namespace std;
-
-SSL *ssl;
-int sock;
 
 class HttpsClient
 {
-	public:
-		HttpsClient();
+public:
+	HttpsClient();
+
+	bool sendRequest(const std::string &request_str);
+	std::string receivePacket(); // blocking
+	void printConnectionError();
 	
-		void SendPacket();
-		std::string RecvPacket();
-		void log_ssl();
-		void ShowCerts(SSL* ssl);
-		void connect_https();
-	private:
+private:
+	void printSendReceiveError(const int err) const;
+
+	SSL *ssl;
 };
 
 #endif // HTTPSCLIENT_H
