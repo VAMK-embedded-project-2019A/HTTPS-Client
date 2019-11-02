@@ -1,4 +1,6 @@
 #include "httpsclient.h"
+#include "songinfoparser.h"
+
 #include <iostream>
 #include <string>
 using namespace std;
@@ -24,7 +26,12 @@ int main()
 	string response = https_client.receiveResponse();
 	cout << "Server response" << endl << response << endl;
 	
-	response.find("\n\n");
+	string data = response.substr(response.find("{"));
+	SongInfoParser parser;
+	parser.parseData(data);
+	auto songs = parser.getSongs();
+	for(auto song : songs)
+		cout << song << endl;
 	
 	return 0;
 }

@@ -3,9 +3,9 @@
 
 std::ostream& operator<<(std::ostream& stream, const SongInfo& song_info)
 {
-	stream << "{ " << song_info._name;
+	stream << "{" << song_info._name;
 	stream << "; " << song_info._file_name;
-	stream << "; " << song_info._tag;
+	stream << "; " << song_info._tag << "}";
 	return stream;
 }
 
@@ -20,7 +20,7 @@ bool SongInfoParser::parseData(const std::string &data)
 	}
 	
 	const Json::Value items = root["songs"];
-	for(int i=0; i<items.size(); i++)
+	for(unsigned int i=0; i<items.size(); i++)
 	{
 		SongInfo song_info;
 		song_info._name 		= items[i]["name"].asString();
@@ -28,6 +28,8 @@ bool SongInfoParser::parseData(const std::string &data)
 		song_info._tag 			= items[i]["tag"].asString();
 		_songs.push_back(song_info);
 	}
+	
+	return true;
 }
 
 std::vector<SongInfo> SongInfoParser::getSongs() const
