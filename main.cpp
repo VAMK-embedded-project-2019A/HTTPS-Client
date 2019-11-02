@@ -24,5 +24,7 @@ int main()
 	string response = https_client.receiveResponse();
 	cout << "Server response" << endl << response << endl;
 	
+	response.find("\n\n");
+	
 	return 0;
 }
