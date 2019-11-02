@@ -55,9 +55,39 @@ std::string HttpsClient::receiveResponse()
 	return string{};
 }
 
+void HttpsClient::printCerts()
+{
+	X509 *cert = SSL_get_peer_certificate(_ssl);
+    char *line;
+    if (cert != nullptr)
+    {
+        cout << "Server certificates:" << endl;
+		
+        line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
+		cout << "Subject: " << line << endl;
+        free(line);
+		
+        line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
+		cout << "Issuer: " << line << endl;
+        free(line);
+		
+        X509_free(cert);
+    }
+    else
+		cout << "Info: No client certificates configured" << endl;
+}
+
 void HttpsClient::printConnectionError()
 {
-	
+	// TODO: Need testing
+	int err;
+	while((err = ERR_get_error()) != 0)
+	{
+		char *str = ERR_error_string(err, 0);
+		if(str == nullptr)
+			return;
+		cout << str << endl;
+	}
 }
 
 void HttpsClient::printSendReceiveError(const int err) const
@@ -141,7 +171,7 @@ bool HttpsClient::sslConnect(int *sock)
 //		return false;
 //	}
 	
-	// WHAT IS THIS FOR???
+	// TODO: Is this part necessary? What does it do?
 //	int file_descriptor = SSL_get_fd(_ssl);
 //	if(file_descriptor == -1)
 //	{

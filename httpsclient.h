@@ -14,6 +14,7 @@ public:
 	bool connect();
 	bool sendRequest(const std::string &request_str);
 	std::string receiveResponse(); // blocking
+	void printCerts();
 	
 private:
 	void printConnectionError();

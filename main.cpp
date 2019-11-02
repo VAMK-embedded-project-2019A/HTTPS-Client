@@ -11,6 +11,7 @@ int main()
 		cout << "Cannot connect to server" << endl;
 		return -1;
 	}
+	https_client.printCerts();
 	
 	string request{"GET /song?tag=rain HTTP/1.1\r\n\r\n"};
 	if(!https_client.sendRequest(request))
