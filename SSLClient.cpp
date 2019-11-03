@@ -192,6 +192,13 @@ void parse_data(std::string data)
 	}
 }
 
+//SFTP get file from server
+/*
+	Follow this link to generate key pair and upload public key to the server (follow all the steps except for step 5)
+		https://community.atlassian.com/t5/Bitbucket-questions/How-do-I-set-up-ssh-public-key-authentication-so-that-I-can-use/qaq-p/171671
+	Follow this link if you have problem with SHH host key:
+		https://serverfault.com/questions/783648/why-cant-curl-retrieve-the-ssh-host-key-key-none
+*/
 #undef DISABLE_SSH_AGENT
 struct FtpFile
 {
@@ -222,8 +229,6 @@ void sftp_get()
 	};
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 	curl = curl_easy_init();
-	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
 	if(curl)
 	{
 		curl_easy_setopt(curl, CURLOPT_URL,"sftp://espp@62.248.142.50/home/espp/songs/test.txt");
@@ -237,11 +242,11 @@ void sftp_get()
     	/* We activate ssh agent. For this to work you need
        	to have ssh-agent running (type set | grep SSH_AGENT to check) or
        	pageant on Windows (there is an icon in systray if so) */
-    	curl_easy_setopt(curl, CURLOPT_SSH_AUTH_TYPES, CURLSSH_AUTH_PUBLICKEY | CURLSSH_AUTH_PASSWORD);
-    	curl_easy_setopt(curl, CURLOPT_SSH_KNOWNHOSTS, "/home/pi/.ssh/known_hosts"); 
-		curl_easy_setopt(curl, CURLOPT_SSH_PUBLIC_KEYFILE, "home/pi/.ssh/id_rsa.pub");
-		curl_easy_setopt(curl, CURLOPT_SSH_PRIVATE_KEYFILE, "home/pi/.ssh/id_rsa"); 
-    	curl_easy_setopt(curl, CURLOPT_KEYPASSWD, "pass123");
+    	curl_easy_setopt(curl, CURLOPT_SSH_AUTH_TYPES, CURLSSH_AUTH_PUBLICKEY | CURLSSH_AUTH_PASSWORD); // CURLSSH_AUTH_PUBLICKEY |  
+    	curl_easy_setopt(curl, CURLOPT_SSH_KNOWNHOSTS, "/home/pi/.ssh/my_known_hosts"); 
+		curl_easy_setopt(curl, CURLOPT_SSH_PUBLIC_KEYFILE, "/home/pi/.ssh/my_ssh_key.pub");
+		curl_easy_setopt(curl, CURLOPT_SSH_PRIVATE_KEYFILE, "/home/pi/.ssh/my_ssh_key"); 
+    	curl_easy_setopt(curl, CURLOPT_KEYPASSWD,"pass123");
 	#endif
 		/* Switch on full protocol/debug output */
 		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
