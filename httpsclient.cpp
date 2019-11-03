@@ -6,19 +6,36 @@ using namespace std;
 #include <openssl/err.h>	// SSL_get_error()
 #include <arpa/inet.h>		// htons()
 #include <sys/socket.h>		// connect()
+#include <unistd.h>		// close()
 
 HttpsClient::HttpsClient(std::string ip, uint16_t port) : _ip{ip}, _port{port}
 {
-	
+
+}
+
+HttpsClient::~HttpsClient()
+{
+	if(_ssl != nullptr)
+	{
+		SSL_free(_ssl);
+		_ssl = nullptr;
+	}
+
+	if(_ctx != nullptr)
+	{
+		SSL_CTX_free(_ctx);
+		_ctx = nullptr;
+	}
+
+	close(_sockfd);
 }
 
 bool HttpsClient::connect()
 {
-	int sock = serverConnect();
-	if(sock == -1)
+	if(!serverConnect())
 		return false;
-	
-	return sslConnect(&sock);
+
+	return sslConnect();
 }
 
 bool HttpsClient::sendRequest(const std::string &request_str)
@@ -26,7 +43,7 @@ bool HttpsClient::sendRequest(const std::string &request_str)
 	int written_len = SSL_write(_ssl, request_str.c_str(), request_str.length());
 	if(written_len >= 0)
 		return true;
-	
+
 	int err = SSL_get_error(_ssl, written_len);
 	printSendReceiveError(err);
 	return false;
@@ -38,7 +55,7 @@ std::string HttpsClient::receiveResponse()
 	int read_len;
 	char buffer[MAX_BYTE_READ + 1];
 	string received_str;
-	
+
 	do
 	{
 		read_len = SSL_read(_ssl, buffer, MAX_BYTE_READ);
@@ -46,10 +63,10 @@ std::string HttpsClient::receiveResponse()
 		received_str += string(buffer);
 	}
 	while(read_len > 0);
-	
+
 	if(read_len >= 0)
 		return received_str;
-	
+
 	int err = SSL_get_error(_ssl, read_len);
 	printSendReceiveError(err);
 	return string{};
@@ -58,22 +75,22 @@ std::string HttpsClient::receiveResponse()
 void HttpsClient::printCerts()
 {
 	X509 *cert = SSL_get_peer_certificate(_ssl);
-    char *line;
-    if (cert != nullptr)
-    {
-        cout << "Server certificates:" << endl;
-		
-        line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
+	char *line;
+	if (cert != nullptr)
+	{
+		cout << "Server certificates:" << endl;
+
+		line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
 		cout << "Subject: " << line << endl;
-        free(line);
-		
-        line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
+		free(line);
+
+		line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
 		cout << "Issuer: " << line << endl;
-        free(line);
-		
-        X509_free(cert);
-    }
-    else
+		free(line);
+
+		X509_free(cert);
+	}
+	else
 		cout << "Info: No client certificates configured" << endl;
 }
 
@@ -114,55 +131,54 @@ void HttpsClient::printSendReceiveError(const int err) const
 	}
 }
 
-int HttpsClient::serverConnect() const
+bool HttpsClient::serverConnect()
 {
-	int sock;
-	sock = socket(AF_INET, SOCK_STREAM, 0);
-	if(sock == -1)
+	_sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if(_sockfd == -1)
 	{
 		cout << "Error creating socket" << endl;
-		return -1;
+		return false;
 	}
-	
+
 	struct sockaddr_in sock_addr;
 	memset(&sock_addr, 0, sizeof(sock_addr));
 	sock_addr.sin_family      = AF_INET;
 	sock_addr.sin_addr.s_addr = inet_addr(_ip.c_str());
 	sock_addr.sin_port        = htons(_port);
-	
-	if(::connect(sock, (struct sockaddr *)&sock_addr, sizeof(sock_addr)))
+
+	if(::connect(_sockfd, (struct sockaddr *)&sock_addr, sizeof(sock_addr)))
 	{
 		cout << "Error connecting to server" << endl;
-		return -1;
+		return false;
 	}
-	
-	return sock;
+
+	return true;
 }
 
-bool HttpsClient::sslConnect(int *sock)
+bool HttpsClient::sslConnect()
 {
 	SSL_library_init();
 	SSLeay_add_ssl_algorithms();
 	SSL_load_error_strings();
 	const SSL_METHOD *method = TLSv1_2_client_method();
-	
+
 	// creates a framework to establish TLS connections
-	SSL_CTX *ctx = SSL_CTX_new(method);
-	if(ctx == nullptr)
+	_ctx = SSL_CTX_new(method);
+	if(_ctx == nullptr)
 	{
 		cout << "Error creating CTX object" << endl;
 		return false;
 	}
-	
+
 	// creates a new SSL structure to hold the data for a TLS connection.
-	_ssl = SSL_new(ctx);
+	_ssl = SSL_new(_ctx);
 	if(_ssl == nullptr)
 	{
 		cout << "Error creating SSL structure" << endl;
 		printConnectionError();
 		return false;
 	}
-	
+
 	// if the key is self-signed, comment out this part
 //	if(!SSL_CTX_check_private_key(ctx))
 //	{
@@ -170,7 +186,7 @@ bool HttpsClient::sslConnect(int *sock)
 //		printConnectionError();
 //		return false;
 //	}
-	
+
 	// TODO: Is this part necessary? What does it do?
 //	int file_descriptor = SSL_get_fd(_ssl);
 //	if(file_descriptor == -1)
@@ -178,13 +194,13 @@ bool HttpsClient::sslConnect(int *sock)
 //		cout << "Cannot get file descriptor" << endl;
 //		return false;
 //	}
-	
-	if(!SSL_set_fd(_ssl, *sock))
+
+	if(!SSL_set_fd(_ssl, _sockfd))
 	{
 		cout << "Cannot set file descriptor" << endl;
 		return false;
 	}
-	
+
 	// initiates the TLS handshake with a server.
 	int err = SSL_connect(_ssl);
 	if(err <= 0)
@@ -193,6 +209,6 @@ bool HttpsClient::sslConnect(int *sock)
 		printConnectionError();
 		return false;
 	}
-	
+
 	return true;
 }
