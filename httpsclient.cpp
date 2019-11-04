@@ -6,9 +6,9 @@ using namespace std;
 #include <openssl/err.h>	// SSL_get_error()
 #include <arpa/inet.h>		// htons()
 #include <sys/socket.h>		// connect()
-#include <unistd.h>		// close()
+#include <unistd.h>			// close()
 
-HttpsClient::HttpsClient(std::string ip, uint16_t port) : _ip{ip}, _port{port}
+HttpsClient::HttpsClient(const std::string &ip, uint16_t port) : _ip{ip}, _port{port}
 {
 
 }

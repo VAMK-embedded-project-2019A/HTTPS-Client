@@ -9,10 +9,13 @@ class HttpsClient
 public:
 	HttpsClient() = delete;
 	HttpsClient(const HttpsClient &) = delete;
-	HttpsClient(std::string ip, uint16_t port);
+	HttpsClient(const std::string &ip, uint16_t port);
 	~HttpsClient();
 
 	bool connect();
+	
+	// TODO: why the send request only works the first time
+	// Temporary workaround: new object each request
 	bool sendRequest(const std::string &request_str);
 	std::string receiveResponse(); // blocking
 	void printCerts();
