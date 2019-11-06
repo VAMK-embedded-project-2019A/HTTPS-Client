@@ -94,6 +94,7 @@ bool SftpClient::getFile(const std::string &server_file_path, const std::string 
 		if(last_string_pos == string::npos)
 		{
 			cout << "Error: Empty server file name" << endl;
+			curl_easy_cleanup(_curl);
 			return false;
 		}
 		save_file_path = server_file_path.substr(last_string_pos + 1);
@@ -102,6 +103,7 @@ bool SftpClient::getFile(const std::string &server_file_path, const std::string 
 	if(ifstream{save_file_path}.is_open())
 	{
 		cout << "Error: File already exist: " << save_file_path << endl;
+		curl_easy_cleanup(_curl);
 		return false;
 	}
 	
@@ -120,13 +122,16 @@ bool SftpClient::getFile(const std::string &server_file_path, const std::string 
 	curl_easy_setopt(_curl, CURLOPT_VERBOSE,				1L);
 	
 	CURLcode return_value = curl_easy_perform(_curl);
-	curl_easy_cleanup(_curl);
 	if(return_value != CURLE_OK)
 	{
 		cout << "Error: Perform curl fail: " << return_value << endl;
+		curl_easy_cleanup(_curl);
+		if(sftp_file.stream)
+			fclose(sftp_file.stream);
 		return false;
 	}
 	
+	curl_easy_cleanup(_curl);
 	if(sftp_file.stream)
 		fclose(sftp_file.stream);
 	
