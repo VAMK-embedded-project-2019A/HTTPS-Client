@@ -1,19 +1,41 @@
-#include "httpsclient.h"
-#include "songinfoparser.h"
+#include "main.h"
 
 #include <iostream>
-#include <string>
 using namespace std;
+
+int main()
+{
+	string tag = getTagFromLocation("63.102503", "21.6182102");
+	cout << "Server response: " << tag << endl;
+
+	// we don't have any song for any weather but rain yet
+	auto songs = getSongsFromTag("rain");
+	cout << "Server response:" << endl;
+	for(auto song : songs)
+		cout << song << endl;
+	cout << endl;
+	
+	SftpClient sftp_client{IP, "espp"};
+	sftp_client.setPasswordFilePath("./test-files/password");
+	sftp_client.setKnownHostsFilePath("./test-files/known-hosts");
+	sftp_client.setPublicKeyFilePath("./test-files/ssh-key.pub");
+	sftp_client.setPrivateKeyFilePath("./test-files/ssh-key");
+	
+	string file_path{"/home/espp/songs/test.txt"};
+	cout << "Getting file: " << file_path << endl;
+	sftp_client.getFile(file_path);
+
+	return 0;
+}
 
 vector<SongInfo> getSongsFromTag(const string &tag)
 {
-	HttpsClient https_client{"62.248.142.50", 2001};
+	HttpsClient https_client{IP, PORT};
 	if(!https_client.connect())
 	{
 		cout << "Cannot connect to server" << endl;
 		return {};
 	}
-	https_client.printCerts();
 
 	string request{"GET /song?tag=" + tag + " HTTP/1.1\r\n\r\n"};
 	if(!https_client.sendRequest(request))
@@ -21,10 +43,10 @@ vector<SongInfo> getSongsFromTag(const string &tag)
 		cout << "Cannot send request" << endl;
 		return {};
 	}
-	cout << "Request sent: " << request;
+	request.erase(request.find("\r\n\r\n"));
+	cout << "Request sent: " << request << endl;
 
 	string response = https_client.receiveResponse();
-	cout << "Server response" << endl << response << endl;
 	if(response.empty())
 		return {};
 
@@ -37,13 +59,12 @@ vector<SongInfo> getSongsFromTag(const string &tag)
 
 string getTagFromLocation(const string &longtitude, const string &latitude)
 {
-	HttpsClient https_client{"62.248.142.50", 2001};
+	HttpsClient https_client{IP, PORT};
 	if(!https_client.connect())
 	{
 		cout << "Cannot connect to server" << endl;
 		return string{};
 	}
-	https_client.printCerts();
 
 	string request{"GET /weather?longitude=" + longtitude + "&latitude=" + latitude + " HTTP/1.1\r\n\r\n"};
 	if(!https_client.sendRequest(request))
@@ -51,27 +72,13 @@ string getTagFromLocation(const string &longtitude, const string &latitude)
 		cout << "Cannot send request" << endl;
 		return string{};
 	}
-	cout << "Request sent: " << request;
+	request.erase(request.find("\r\n\r\n"));
+	cout << "Request sent: " << request << endl;
 
 	string response = https_client.receiveResponse();
-	cout << "Server response" << endl << response << endl;
 	if(response.empty())
 		return string{};
 
 	string data_delim{"\r\n\r\n"};
 	return response.substr(response.find(data_delim) + data_delim.length());
-}
-
-int main()
-{
-	string tag = getTagFromLocation("63.102503", "21.6182102");
-	if(tag.empty())
-		return -1;
-
-	// we don't have any song for any weather but rain yet
-	auto songs = getSongsFromTag("rain");
-	for(auto song : songs)
-		cout << song << endl;
-
-	return 0;
 }

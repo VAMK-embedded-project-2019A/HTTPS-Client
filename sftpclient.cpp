@@ -23,6 +23,7 @@ size_t writeCallback(void *buffer, size_t size, size_t nmemb, void *stream)
 }
 
 SftpClient::SftpClient(const std::string &ip, const std::string &username)
+	: _ip{ip}, _username{username}
 {
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 }
@@ -111,16 +112,18 @@ bool SftpClient::getFile(const std::string &server_file_path, const std::string 
 	SftpFile sftp_file{save_file_path, nullptr};
 	
 	curl_easy_setopt(_curl, CURLOPT_URL,					url.c_str());
-	curl_easy_setopt(_curl, CURLOPT_USERNAME,				_username);
+	curl_easy_setopt(_curl, CURLOPT_USERNAME,				_username.c_str());
 	curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION,			writeCallback);
 	curl_easy_setopt(_curl, CURLOPT_WRITEDATA,				&sftp_file);
 	curl_easy_setopt(_curl, CURLOPT_SSH_AUTH_TYPES,			CURLSSH_AUTH_PUBLICKEY | CURLSSH_AUTH_PASSWORD);
-	curl_easy_setopt(_curl, CURLOPT_SSH_KNOWNHOSTS,			_known_hosts_path);
-	curl_easy_setopt(_curl, CURLOPT_SSH_PUBLIC_KEYFILE,		_public_key_path);
-	curl_easy_setopt(_curl, CURLOPT_SSH_PRIVATE_KEYFILE,	_private_key_path);
-	curl_easy_setopt(_curl, CURLOPT_KEYPASSWD,				_password);
-	curl_easy_setopt(_curl, CURLOPT_VERBOSE,				1L);
+	curl_easy_setopt(_curl, CURLOPT_SSH_KNOWNHOSTS,			_known_hosts_path.c_str());
+	curl_easy_setopt(_curl, CURLOPT_SSH_PUBLIC_KEYFILE,		_public_key_path.c_str());
+	curl_easy_setopt(_curl, CURLOPT_SSH_PRIVATE_KEYFILE,	_private_key_path.c_str());
+	curl_easy_setopt(_curl, CURLOPT_KEYPASSWD,				_password.c_str());
 	
+	// uncomment for full debug
+	// curl_easy_setopt(_curl, CURLOPT_VERBOSE,				1L);
+
 	CURLcode return_value = curl_easy_perform(_curl);
 	if(return_value != CURLE_OK)
 	{

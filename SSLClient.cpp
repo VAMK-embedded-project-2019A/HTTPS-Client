@@ -121,7 +121,7 @@ void connect_https()
 	struct sockaddr_in sa;
 	memset (&sa, 0, sizeof(sa));
 	sa.sin_family      = AF_INET;
-	sa.sin_addr.s_addr = inet_addr("62.248.142.50");
+	sa.sin_addr.s_addr = inet_addr("83.245.143.247");
 	sa.sin_port        = htons (2001);
 	socklen_t socklen = sizeof(sa);
 	if (connect(s, (struct sockaddr *)&sa, socklen))
@@ -231,14 +231,13 @@ void sftp_get()
 	curl = curl_easy_init();
 	if(curl)
 	{
-		curl_easy_setopt(curl, CURLOPT_URL,"sftp://espp@62.248.142.50/home/espp/songs/test.txt");
+		curl_easy_setopt(curl, CURLOPT_URL,"sftp://espp@83.245.143.247/home/espp/songs/test.txt");
 		curl_easy_setopt(curl, CURLOPT_USERNAME, "espp"); 
 		/* Define our callback to get called when there's data to be written */
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_fwrite);
 		/* Set a pointer to our struct to pass to the callback */
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ftpfile);
 
-	#ifndef DISABLE_SSH_AGENT
     	/* We activate ssh agent. For this to work you need
        	to have ssh-agent running (type set | grep SSH_AGENT to check) or
        	pageant on Windows (there is an icon in systray if so) */
@@ -247,7 +246,7 @@ void sftp_get()
 		curl_easy_setopt(curl, CURLOPT_SSH_PUBLIC_KEYFILE, "/home/pi/.ssh/my_ssh_key.pub");
 		curl_easy_setopt(curl, CURLOPT_SSH_PRIVATE_KEYFILE, "/home/pi/.ssh/my_ssh_key"); 
     	curl_easy_setopt(curl, CURLOPT_KEYPASSWD,"pass123");
-	#endif
+
 		/* Switch on full protocol/debug output */
 		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 		res = curl_easy_perform(curl);

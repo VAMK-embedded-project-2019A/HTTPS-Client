@@ -7,6 +7,13 @@
 
 size_t writeCallback(void *buffer, size_t size, size_t nmemb, void *stream);
 
+/*
+	Follow this link to generate key pair and upload public key to the server (follow all the steps except for step 5)
+		https://community.atlassian.com/t5/Bitbucket-questions/How-do-I-set-up-ssh-public-key-authentication-so-that-I-can-use/qaq-p/171671
+	Follow this link if you have problem with SHH host key:
+		https://serverfault.com/questions/783648/why-cant-curl-retrieve-the-ssh-host-key-key-none
+*/
+
 class SftpClient
 {
 public:
@@ -15,7 +22,6 @@ public:
 	SftpClient(const std::string &ip, const std::string &username);
 	~SftpClient();
 	
-	void setServerFilePath(const std::string &server_file_path);
 	bool setPasswordFilePath(const std::string &password_file_path);
 	bool setKnownHostsFilePath(const std::string &known_hosts_file_path);
 	bool setPublicKeyFilePath(const std::string &public_key_file_path);
